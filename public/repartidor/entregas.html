@@ -1,0 +1,110 @@
+<!DOCTYPE html><html lang="es"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mis Entregas — Repartidor</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><link rel="stylesheet" href="../css/style.css"></head><body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-success"><div class="container-fluid">
+  <a class="navbar-brand" href="dashboard.html">🌱 Agro Market</a>
+  <div class="collapse navbar-collapse"><ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link active" href="entregas.html"><i class="bi bi-bicycle"></i> Mis Entregas</a></li></ul>
+  <ul class="navbar-nav"><li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+      <i class="bi bi-person-circle"></i> <span id="usuario-nombre">...</span></a>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item text-danger" href="#" onclick="cerrarSesion()">Cerrar sesión</a></li>
+    </ul></li></ul></div>
+</div></nav>
+<div class="container py-4">
+  <h4 class="fw-bold text-success mb-4">🚴 Mis Entregas del día</h4>
+  <div id="lista"><div class="text-center py-5"><div class="spinner-border text-success"></div></div></div>
+</div>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/db.js"></script>
+<script>
+  protegerPagina(["repartidor","administrador"]);
+  async function iniciarPagina() {
+    cargarNavbar();
+    const u = await obtenerUsuarioActual();
+    const pedidos = await listarPedidosRepartidor(u.id);
+    const el = document.getElementById("lista");
+    if (!pedidos.length) {
+      el.innerHTML=`<div class="text-center py-5"><span style="font-size:4rem">✅</span>
+        <p class="text-muted mt-2">No tienes entregas pendientes.</p></div>`;
+      return;
+    }
+    el.innerHTML = pedidos.map((p,i)=>`
+      <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <h6 class="fw-bold mb-0">Pedido #${p.id.slice(0,8).toUpperCase()}</h6>
+                <span class="badge bg-${COLORES_ESTADO[p.estado]}">${ETIQUETAS_ESTADO[p.estado]}</span>
+              </div>
+              ${p.direccion_entrega?`<div class="mb-1"><i class="bi bi-geo-alt-fill text-success"></i> <strong>${p.direccion_entrega}</strong></div>`:""}
+              ${p.notas?`<div class="text-muted small mb-1"><i class="bi bi-chat-dots"></i> ${p.notas}</div>`:""}
+              <div class="mb-2">${(p.detalles||[]).map(d=>
+                `<span class="badge bg-light text-dark border me-1">${d.nombre_producto} x${d.cantidad}</span>`
+              ).join("")}</div>
+              <span class="fw-bold text-success">${fmt(p.total)}</span>
+              <small class="text-muted ms-2">${p.forma_pago==="efectivo"?"💵 Cobrar al entregar":"🏦 Ya pagó (transferencia)"}</small>
+            </div>
+            ${p.estado==="en_camino"?`
+            <div class="ms-3 text-end">
+              <button class="btn btn-outline-secondary btn-sm mb-2 d-block w-100"
+                      data-bs-toggle="modal" data-bs-target="#mt${i}">
+                <i class="bi bi-clock"></i> Tiempo estimado</button>
+              <button class="btn btn-success btn-sm d-block w-100"
+                      onclick="confirmarEntrega('${p.id}')">
+                <i class="bi bi-check2-circle"></i> Entregado</button>
+            </div>
+            <div class="modal fade" id="mt${i}" tabindex="-1"><div class="modal-dialog modal-sm">
+              <div class="modal-content">
+                <div class="modal-header"><h6 class="modal-title">¿En cuánto llegas?</h6>
+                  <button class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                  <select class="form-select" id="min${i}">
+                    <option value="5">5 minutos</option><option value="10" selected>10 minutos</option>
+                    <option value="15">15 minutos</option><option value="20">20 minutos</option>
+                    <option value="30">30 minutos</option>
+                  </select>
+                </div>
+                <div class="modal-footer">
+                  <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                  <button class="btn btn-success btn-sm" onclick="notificarTiempo('${p.id}',${i})">Notificar</button>
+                </div>
+              </div></div></div>
+            `:""}
+          </div>
+        </div>
+      </div>`).join("");
+  }
+  async function confirmarEntrega(id) {
+    if (!confirm("¿Confirmar que entregaste el pedido?")) return;
+    const u = await obtenerUsuarioActual();
+    const p = await obtenerPedido(id);
+    try {
+      await cambiarEstadoPedido(id, p, "entregado", u.id, "Entrega confirmada por repartidor");
+      mostrarToast("Pedido marcado como entregado ✓");
+      setTimeout(()=>location.reload(), 1000);
+    } catch(e) { mostrarToast(e.message,"danger"); }
+  }
+  async function notificarTiempo(id, i) {
+    const u = await obtenerUsuarioActual();
+    const min = document.getElementById(`min${i}`).value;
+    const p = await obtenerPedido(id);
+    const hist = [...(p.historial||[]), {
+      estado_anterior: p.estado, estado_nuevo: p.estado,
+      usuario_id: u.id, nota: `El repartidor llegará en aproximadamente ${min} minutos.`,
+      fecha: new Date().toISOString()
+    }];
+    await db.collection("pedidos").doc(id).update({ historial: hist });
+    bootstrap.Modal.getInstance(document.getElementById(`mt${i}`)).hide();
+    mostrarToast(`Notificación enviada: llegas en ${min} min`);
+  }
+</script></body></html>

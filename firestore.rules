@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Función helper: obtener el rol del usuario
+    function getRol() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+    }
+
+    // Función: el usuario es admin
+    function esAdmin() {
+      return request.auth != null && getRol() == 'administrador';
+    }
+
+    // Función: el usuario es repartidor
+    function esRepartidor() {
+      return request.auth != null && getRol() == 'repartidor';
+    }
+
+    // USUARIOS: solo el admin puede crear usuarios (excepto registro propio)
+    match /usuarios/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || esAdmin());
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && (request.auth.uid == uid || esAdmin());
+    }
+
+    // PRODUCTOS: todos los auth leen, solo admin escribe
+    match /productos/{doc} {
+      allow read: if request.auth != null;
+      allow write: if esAdmin();
+    }
+
+    // CATEGORÍAS: todos leen, solo admin escribe
+    match /categorias/{doc} {
+      allow read: if request.auth != null;
+      allow write: if esAdmin();
+    }
+
+    // ZONAS: todos leen, solo admin escribe
+    match /zonas_delivery/{doc} {
+      allow read: if request.auth != null;
+      allow write: if esAdmin();
+    }
+
+    // PEDIDOS: cliente ve los suyos, admin y repartidor ven todos
+    match /pedidos/{pedidoId} {
+      allow read: if request.auth != null && (
+        resource.data.cliente_id == request.auth.uid ||
+        esAdmin() || esRepartidor()
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        esAdmin() || esRepartidor() ||
+        resource.data.cliente_id == request.auth.uid
+      );
+    }
+
+    // MOVIMIENTOS STOCK: solo admin
+    match /movimientos_stock/{doc} {
+      allow read: if esAdmin();
+      allow write: if esAdmin();
+    }
+  }
+}

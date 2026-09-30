@@ -1,0 +1,227 @@
+<!DOCTYPE html><html lang="es"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Confirmar Pedido — Agro Market ULEAM</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><link rel="stylesheet" href="css/style.css"></head><body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-success"><div class="container">
+  <a class="navbar-brand" href="catalogo.html">🌱 Agro Market ULEAM</a>
+  <div class="navbar-nav ms-auto">
+    <span class="nav-link"><i class="bi bi-person-circle"></i> <span id="usuario-nombre">...</span></span>
+    <a class="nav-link text-white-50" href="#" onclick="cerrarSesion()">Salir</a>
+  </div>
+</div></nav>
+<main class="container py-4">
+  <h4 class="fw-bold text-success mb-4">📦 Confirmar Pedido</h4>
+  <div class="row">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-success text-white fw-bold">Productos</div>
+        <div id="resumen-productos"><div class="p-3 text-center"><div class="spinner-border text-success"></div></div></div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white fw-bold">Datos del pedido</div>
+        <div class="card-body">
+          <label class="form-label fw-semibold">Tipo de entrega *</label>
+          <div class="mb-3">
+            <div class="form-check form-check-inline">
+              <input type="radio" name="tipo" value="delivery" id="td" class="form-check-input"
+                     checked onchange="toggleDelivery()">
+              <label class="form-check-label" for="td">🚴 Delivery</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input type="radio" name="tipo" value="retiro" id="tr" class="form-check-input"
+                     onchange="toggleDelivery()">
+              <label class="form-check-label" for="tr">🏪 Retiro</label>
+            </div>
+          </div>
+          <div id="campos-delivery">
+            <div class="mb-3">
+              <label class="form-label">Zona de entrega *</label>
+              <select id="zona" class="form-select" onchange="actualizarTotal()">
+                <option value="">Selecciona una zona</option>
+              </select>
+            </div>
+            <label class="form-label fw-semibold">¿Dónde te encontramos? *</label>
+            <div class="row g-2 mb-2">
+              <div class="col-5">
+                <label class="form-label small">Bloque</label>
+                <select id="bloque" class="form-select form-select-sm">
+                  <option value="">Selecciona</option>
+                  <option>Bloque A</option><option>Bloque B</option><option>Bloque C</option>
+                  <option>Bloque D</option><option>Bloque E</option><option>Biblioteca</option>
+                  <option>Área deportiva</option><option>Rectorado</option><option>Otro</option>
+                </select>
+              </div>
+              <div class="col-3">
+                <label class="form-label small">Piso</label>
+                <select id="piso" class="form-select form-select-sm">
+                  <option value="PB">P. Baja</option>
+                  <option value="1">Piso 1</option><option value="2">Piso 2</option>
+                  <option value="3">Piso 3</option>
+                </select>
+              </div>
+              <div class="col-4">
+                <label class="form-label small">Aula</label>
+                <input type="text" id="aula" class="form-control form-control-sm" placeholder="101">
+              </div>
+            </div>
+            <div class="mb-3">
+              <input type="text" id="referencia" class="form-control form-control-sm"
+                     placeholder="Referencia adicional (opcional)">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Forma de pago *</label>
+            <select id="forma-pago" class="form-select" onchange="toggleComprobante()">
+              <option value="efectivo">💵 Efectivo (pago al recibir)</option>
+              <option value="transferencia">🏦 Transferencia bancaria</option>
+            </select>
+          </div>
+          <div id="campo-comprobante" class="mb-3" style="display:none">
+            <label class="form-label">Comprobante *</label>
+            <input type="file" id="comprobante" class="form-control" accept="image/*">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notas</label>
+            <textarea id="notas" class="form-control" rows="2"
+                      placeholder="Indicaciones para el repartidor..."></textarea>
+          </div>
+          <div class="d-flex justify-content-between text-muted small mb-1">
+            <span>Subtotal</span><span id="txt-subtotal">$0.00</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted small mb-2">
+            <span>Envío</span><span id="txt-envio">—</span>
+          </div>
+          <div class="d-flex justify-content-between fw-bold text-success mb-3 border-top pt-2">
+            <span>Total</span><span id="txt-total">$0.00</span>
+          </div>
+          <button class="btn btn-success w-100 fw-bold" onclick="confirmarPedido()">
+            <i class="bi bi-check-circle"></i> Confirmar pedido</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script>
+  let items = []; let subtotal = 0; let zonas = [];
+  const MINIMO = 2.00;
+
+  protegerPagina(["cliente","administrador"]);
+
+  async function iniciarPagina() {
+    cargarNavbar();
+    const carrito = JSON.parse(localStorage.getItem("carrito") || "{}");
+    if (!Object.keys(carrito).length) { window.location.href = "carrito.html"; return; }
+    for (const [id, cant] of Object.entries(carrito)) {
+      const p = await obtenerProducto(id);
+      if (p) { items.push({prod:p, cantidad:cant, total:p.precio*cant}); subtotal+=p.precio*cant; }
+    }
+    // Render productos
+    document.getElementById("resumen-productos").innerHTML =
+      `<table class="table mb-0">
+        <thead class="table-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-end">Total</th></tr></thead>
+        <tbody>${items.map(it=>`<tr>
+          <td>${it.prod.nombre} <small class="text-muted">/${it.prod.unidad}</small></td>
+          <td class="text-center">${it.cantidad}</td>
+          <td class="text-end fw-bold">${fmt(it.total)}</td></tr>`).join("")}
+        </tbody></table>`;
+    document.getElementById("txt-subtotal").textContent = fmt(subtotal);
+    document.getElementById("txt-total").textContent = fmt(subtotal);
+    // Cargar zonas
+    zonas = await listarZonas();
+    const sel = document.getElementById("zona");
+    zonas.forEach(z => {
+      const opt = document.createElement("option");
+      opt.value = z.id; opt.textContent = `${z.nombre} (+${fmt(z.tarifa)})`;
+      opt.dataset.tarifa = z.tarifa;
+      sel.appendChild(opt);
+    });
+  }
+
+  function toggleDelivery() {
+    const esDelivery = document.querySelector('input[name="tipo"]:checked').value==="delivery";
+    document.getElementById("campos-delivery").style.display = esDelivery?"block":"none";
+    actualizarTotal();
+  }
+  function toggleComprobante() {
+    document.getElementById("campo-comprobante").style.display =
+      document.getElementById("forma-pago").value==="transferencia"?"block":"none";
+  }
+  function actualizarTotal() {
+    const esDelivery = document.querySelector('input[name="tipo"]:checked').value==="delivery";
+    const selOpt = document.getElementById("zona").selectedOptions[0];
+    const tarifa = esDelivery && selOpt && selOpt.dataset.tarifa ? parseFloat(selOpt.dataset.tarifa) : 0;
+    document.getElementById("txt-envio").textContent = esDelivery ? fmt(tarifa) : "— (retiro gratis)";
+    document.getElementById("txt-total").textContent = fmt(subtotal + tarifa);
+  }
+
+  async function confirmarPedido() {
+    const tipo = document.querySelector('input[name="tipo"]:checked').value;
+    const formaPago = document.getElementById("forma-pago").value;
+    const zonaId = document.getElementById("zona").value;
+    const bloque = document.getElementById("bloque").value;
+    const piso   = document.getElementById("piso").value;
+    const aula   = document.getElementById("aula").value.trim();
+    const ref    = document.getElementById("referencia").value.trim();
+    const notas  = document.getElementById("notas").value.trim();
+
+    if (tipo==="delivery" && subtotal < MINIMO) {
+      mostrarToast(`Mínimo para delivery: ${fmt(MINIMO)}`, "warning"); return;
+    }
+    if (tipo==="delivery" && !zonaId) {
+      mostrarToast("Selecciona una zona", "warning"); return;
+    }
+    if (tipo==="delivery" && !bloque) {
+      mostrarToast("Indica tu bloque para que el repartidor te encuentre", "warning"); return;
+    }
+
+    let comprobante_url = null;
+    if (formaPago==="transferencia") {
+      const archivo = document.getElementById("comprobante").files[0];
+      if (!archivo) { mostrarToast("Sube el comprobante de transferencia","warning"); return; }
+      comprobante_url = await subirImagen(archivo, "comprobantes");
+    }
+
+    // Construir dirección
+    const partes = [bloque, piso!=="PB"?`Piso ${piso}`:"Planta Baja", aula].filter(Boolean);
+    const direccion = partes.join(" — ") + (ref ? ` (${ref})` : "");
+
+    const selOpt = document.getElementById("zona").selectedOptions[0];
+    const tarifa = tipo==="delivery" && selOpt?.dataset.tarifa ? parseFloat(selOpt.dataset.tarifa) : 0;
+    const usuario = await obtenerUsuarioActual();
+
+    const detalles = items.map(it => ({
+      producto_id: it.prod.id, nombre_producto: it.prod.nombre,
+      cantidad: it.cantidad, precio_unitario: it.prod.precio,
+      subtotal: it.total, unidad: it.prod.unidad
+    }));
+
+    // Descontar stock
+    for (const it of items) {
+      await descontarStock(it.prod.id, it.cantidad, `Pedido ${usuario.correo}`, usuario.id);
+    }
+
+    const docRef = await crearPedido({
+      cliente_id: usuario.id, cliente_nombre: `${usuario.nombre} ${usuario.apellido}`,
+      tipo, zona_id: tipo==="delivery"?zonaId:null,
+      direccion_entrega: tipo==="delivery"?direccion:null,
+      notas, detalles, subtotal: parseFloat(subtotal.toFixed(2)),
+      tarifa_envio: tarifa, total: parseFloat((subtotal+tarifa).toFixed(2)),
+      forma_pago: formaPago, comprobante_url, pago_verificado: false,
+      repartidor_id: null
+    });
+
+    localStorage.removeItem("carrito");
+    window.location.href = `pedido-detalle.html?id=${docRef.id}`;
+  }
+</script></body></html>

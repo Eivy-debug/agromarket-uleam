@@ -1,0 +1,96 @@
+<!DOCTYPE html><html lang="es"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard — Admin</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><link rel="stylesheet" href="../css/style.css"></head><body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-success"><div class="container-fluid">
+  <a class="navbar-brand" href="dashboard.html">🌱 Admin — Agro Market</a>
+  <div class="collapse navbar-collapse">
+    <ul class="navbar-nav me-auto">
+      <li class="nav-item"><a class="nav-link" href="dashboard.html"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+      <li class="nav-item"><a class="nav-link" href="pedidos.html"><i class="bi bi-bag"></i> Pedidos</a></li>
+      <li class="nav-item"><a class="nav-link" href="productos.html"><i class="bi bi-box-seam"></i> Productos</a></li>
+      <li class="nav-item"><a class="nav-link" href="usuarios.html"><i class="bi bi-people"></i> Usuarios</a></li>
+      <li class="nav-item"><a class="nav-link" href="categorias.html"><i class="bi bi-tags"></i> Categorías</a></li>
+      <li class="nav-item"><a class="nav-link" href="zonas.html"><i class="bi bi-map"></i> Zonas</a></li>
+    </ul>
+    <ul class="navbar-nav">
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+          <i class="bi bi-person-circle"></i> <span id="usuario-nombre">...</span></a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><span class="dropdown-item-text text-muted small">Administrador</span></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="../catalogo.html"><i class="bi bi-shop"></i> Ver catálogo</a></li>
+          <li><a class="dropdown-item text-danger" href="#" onclick="cerrarSesion()"><i class="bi bi-box-arrow-right"></i> Cerrar sesión</a></li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+</div></nav>
+<div class="container-fluid py-4">
+  <h4 class="fw-bold text-success mb-4">⚙️ Dashboard</h4>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center bg-warning-subtle">
+      <div class="card-body"><div style="font-size:2rem">⏳</div>
+        <h3 class="fw-bold" id="cnt-pendientes">—</h3>
+        <small class="text-muted">Pendientes</small></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center bg-info-subtle">
+      <div class="card-body"><div style="font-size:2rem">🚴</div>
+        <h3 class="fw-bold" id="cnt-proceso">—</h3>
+        <small class="text-muted">En proceso</small></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center bg-danger-subtle">
+      <div class="card-body"><div style="font-size:2rem">📦</div>
+        <h3 class="fw-bold" id="cnt-sin-stock">—</h3>
+        <small class="text-muted">Sin stock</small></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center bg-warning-subtle">
+      <div class="card-body"><div style="font-size:2rem">⚠️</div>
+        <h3 class="fw-bold" id="cnt-stock-bajo">—</h3>
+        <small class="text-muted">Stock bajo</small></div></div></div>
+  </div>
+  <div class="card shadow-sm border-0">
+    <div class="card-header d-flex justify-content-between bg-success text-white">
+      <span class="fw-bold">Pedidos recientes</span>
+      <a href="pedidos.html" class="btn btn-light btn-sm">Ver todos</a>
+    </div>
+    <div class="card-body p-0">
+      <div id="tabla-pedidos"><div class="p-4 text-center"><div class="spinner-border text-success"></div></div></div>
+    </div>
+  </div>
+  <div class="mt-3">
+    <small class="text-muted"><kbd>Ctrl+Shift+A</kbd> — atajo para volver aquí desde cualquier página</small>
+  </div>
+</div>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/db.js"></script>
+<script>
+  protegerPagina(["administrador"]);
+  async function iniciarPagina() {
+    cargarNavbar();
+    const [pedidos, prods] = await Promise.all([listarTodosPedidos(), listarProductos({})]);
+    document.getElementById("cnt-pendientes").textContent  = pedidos.filter(p=>p.estado==="pendiente").length;
+    document.getElementById("cnt-proceso").textContent     = pedidos.filter(p=>["confirmado","en_preparacion","en_camino"].includes(p.estado)).length;
+    document.getElementById("cnt-sin-stock").textContent   = prods.filter(p=>p.activo&&p.stock_actual<=0).length;
+    document.getElementById("cnt-stock-bajo").textContent  = prods.filter(p=>p.activo&&p.stock_actual>0&&p.stock_actual<=p.stock_minimo).length;
+    const recientes = pedidos.slice(0,10);
+    document.getElementById("tabla-pedidos").innerHTML = recientes.length ? `
+      <table class="table mb-0 align-middle table-hover">
+        <thead class="table-light"><tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>${recientes.map(p=>`<tr>
+          <td class="fw-bold">${p.id.slice(0,6).toUpperCase()}</td>
+          <td><small>${p.cliente_nombre||p.cliente_id?.slice(0,8)||"—"}</small></td>
+          <td>${p.tipo==="delivery"?"🚴":"🏪"}</td>
+          <td class="fw-bold text-success">${fmt(p.total)}</td>
+          <td><span class="badge bg-${COLORES_ESTADO[p.estado]}">${ETIQUETAS_ESTADO[p.estado]}</span></td>
+          <td><small>${p.created_at?.toDate?p.created_at.toDate().toLocaleDateString("es-EC"):"—"}</small></td>
+          <td><a href="../pedido-detalle.html?id=${p.id}" class="btn btn-outline-success btn-sm">Ver</a></td>
+        </tr>`).join("")}</tbody>
+      </table>` : `<p class="text-center text-muted p-4">No hay pedidos aún.</p>`;
+  }
+</script></body></html>
